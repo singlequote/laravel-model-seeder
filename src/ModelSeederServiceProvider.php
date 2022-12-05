@@ -2,7 +2,7 @@
 namespace SingleQuote\ModelSeeder;
 
 use Illuminate\Support\ServiceProvider;
-use SingleQuote\ModelSeeder\Commands\FindAndAddLanguageKeysCommand;
+use SingleQuote\ModelSeeder\Commands\Make;
 
 class ModelSeederServiceProvider extends ServiceProvider
 {
@@ -13,7 +13,7 @@ class ModelSeederServiceProvider extends ServiceProvider
      * @var array
      */
     protected $commands = [
-        FindAndAddLanguageKeysCommand::class,
+        Make::class,
     ];
 
     
@@ -23,8 +23,8 @@ class ModelSeederServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->publishes([
-            __DIR__.'/config/config.php' => config_path('locale-finder.php')
-        ], 'locale-finder');
+            __DIR__.'/config/config.php' => config_path('model-seeder.php')
+        ], 'model-seeder');
     }
 
     /**
@@ -35,12 +35,12 @@ class ModelSeederServiceProvider extends ServiceProvider
         //config
         $this->mergeConfigFrom(
             __DIR__ . '/config/config.php',
-            'locale-finder'
+            'model-seeder'
         );
 
         app()->config["filesystems.disks.ModelSeeder"] = [
             'driver' => 'local',
-            'root' => config('locale-finder.paths.lang_folder'),
+            'root' => config('model-seeder.paths.lang_folder'),
         ];
                 
         $this->commands($this->commands);

@@ -1,41 +1,14 @@
-# Laravel Locale Finder
-Find and auto translate translations in your laravel application
+# Laravel Model Seeder
+Create seeders from your model using the data in your database
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/singlequote/laravel-locale-finder.svg?style=flat-square)](https://packagist.org/packages/singlequote/laravel-locale-finder)
-[![Total Downloads](https://img.shields.io/packagist/dt/singlequote/laravel-locale-finder.svg?style=flat-square)](https://packagist.org/packages/singlequote/laravel-locale-finder)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/singlequote/laravel-model-seeder.svg?style=flat-square)](https://packagist.org/packages/singlequote/laravel-model-seeder)
+[![Total Downloads](https://img.shields.io/packagist/dt/singlequote/laravel-model-seeder.svg?style=flat-square)](https://packagist.org/packages/singlequote/laravel-model-seeder)
 
 
 ### Installation
 ```console
-composer require singlequote/laravel-locale-finder
+composer require singlequote/laravel-model-seeder
 ```
-
-### Usage
-The package searches for translations key in your blade files. For example `{{ __("My translation") }}`. Or `@lang('My Translation')`.
-After searching the package will try to translate the keys using the google [translate package](https://github.com/Stichoza/google-translate-php).
-
-> When removing translations from your view, the package will also remove the keys from the files.
-
-The command can be used from the commandline
-
-For example, find and translate all dutch translation keys
-```console
-php artisan language:find-and-add --locales=nl
-```
-
-or find and translate the dutch and german translations keys
-```console
-php artisan language:find-and-add --locales=nl,de
-```
-
-#### Disabling translation
-If you would like to just get the keys from your views, you can use the `--notranslate` option.
-This will fill the values with the default keys.
-
-```console
-php artisan language:find-and-add --locales=nl --notranslate
-```
-
 
 ## Contributing
 
