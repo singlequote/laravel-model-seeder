@@ -7,8 +7,14 @@ return [
      * You can add multiple model paths
      */
     'models_path' => [
-        "Modules/Base/Entities"
-//        "app/Models"
+        "app/Models"
     ],
+    
+    /**
+     * The relative path from your root to the location where the seeders will be generated
+     */
+    'output_path' => "database/seeders",
+    
+    
     
 ];
