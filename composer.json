@@ -1,0 +1,54 @@
+{
+    "name": "singlequote/laravel-model-seeder",
+    "description": "",
+    "keywords": [
+        "models",
+        "seeders",
+        "generate"
+    ],
+    "homepage": "https://github.com/singlequote/laravel-model-seeder",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Wim Pruiksma",
+            "email": "wim@quotec.nl",
+            "homepage": "https://quotec.nl/"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "laravel/framework": ">=9",
+        "stichoza/google-translate-php": "^4.1"
+    },
+    "require-dev": {
+        
+    },
+    "autoload": {
+        "psr-4": {
+            "SingleQuote\\ModelSeeder\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SingleQuote\\ModelSeeder\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SingleQuote\\ModelSeeder\\ModelSeederServiceProvider"
+            ],
+            "aliases": {
+                "ModelSeeder": "SingleQuote\\ModelSeeder\\ModelSeederFacade"
+            }
+        }
+    }
+}
