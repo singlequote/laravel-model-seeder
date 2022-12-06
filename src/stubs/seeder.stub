@@ -8,8 +8,7 @@ use <namespace>\<model>;
 
 class <model>Seeder extends Seeder
 {
-    use WithoutModelEvents;
-    
+    <modelEvents>
     /**
      * Run the database seeds.
      *

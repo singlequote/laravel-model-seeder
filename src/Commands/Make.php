@@ -1,11 +1,16 @@
 <?php
 namespace SingleQuote\ModelSeeder\Commands;
 
+use DB;
 use File;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use ReflectionClass;
+use ReflectionMethod;
 use Symfony\Component\Finder\SplFileInfo;
+use Throwable;
 use function base_path;
 use function config;
 use function str;
@@ -16,7 +21,7 @@ class Make extends Command
     /**
      * @var  string
      */
-    protected $signature = 'seed:make {--path=} {--output=auto}';
+    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events}';
 
     /**
      * @var  string
@@ -47,7 +52,7 @@ class Make extends Command
     public function handle()
     {
         $this->outputPath = base_path(config('model-seeder.output_path', 'database/seeder'));
-                
+
         if ($this->option('output') && $this->option('output') !== 'auto') {
             $this->outputPath = base_path($this->option('output'));
         }
@@ -64,9 +69,7 @@ class Make extends Command
 
         $this->createModelSeeders();
 
-        if($this->outputPath){
-            $this->createDatabaseSeeders();
-        }
+        $this->createDatabaseSeeders();
 
         $this->info("Database seeders created!");
     }
@@ -78,15 +81,56 @@ class Make extends Command
     {
         $stubFile = __DIR__ . "/../stubs/database.stub";
 
-        $content = str(File::get($stubFile));
-
-        $replaced = "";
+        $grouped = [];
 
         foreach ($this->models as $model) {
-            $replaced .= "            {$model['model']}Seeder::class,\n";
+            $path = $this->outputPath ?? $this->findOutputPath($model);
+            $namespace = $this->parseNamespace($path);
+
+            $grouped[$namespace][] = $model;
         }
-                
-        File::put("$this->outputPath/DatabaseSeeder.php", $content->replace("<lines>", $replaced));
+
+        foreach ($grouped as $namespace => $group) {
+            $content = str(File::get($stubFile));
+            $replaced = "";
+
+            foreach ($group as $model) {
+                $path = $this->outputPath ?? $this->findOutputPath($model);
+                $replaced .= "            {$model['model']}Seeder::class,\n";
+            }
+
+            $fileContent = $content->replace("<namespace>", "$namespace\Database\Seeders")->replace("<lines>", $replaced);
+
+            File::put("$path/DatabaseSeeder.php", $fileContent);
+        }
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    private function parseNamespace(string $path): string
+    {
+        $parsed = str($path)->after(base_path())
+            ->replace(['/', '\\'], '-')
+            ->explode('-');
+
+        $namespace = "";
+
+        foreach ($parsed as $key) {
+
+            if (strlen($key) < 3) {
+                continue;
+            }
+
+            if (in_array($key, ['Models', 'Entities'])) {
+                break;
+            }
+
+            $namespace .= ucFirst($key) . "\\";
+        }
+
+        return rtrim($namespace, "\\");
     }
 
     /**
@@ -100,7 +144,7 @@ class Make extends Command
 
             try {
                 $this->extractModelData($model, new $className);
-            } catch (\Throwable $ex) {
+            } catch (Throwable $ex) {
                 $this->info($ex);
                 $this->error("$className is name a valid model");
                 exit;
@@ -115,7 +159,13 @@ class Make extends Command
      */
     private function extractModelData(array $config, Model $model): void
     {
-        $data = $model::withoutGlobalScopes()->get();
+        try {
+            $data = $model::withoutGlobalScopes()->get();
+        } catch (Throwable $ex) {
+            $this->error("Failed to parse {$config['model']}");
+            dd($ex);
+            return;
+        }
 
         $this->parseSeederFile($model, $config, $data);
     }
@@ -129,18 +179,19 @@ class Make extends Command
     private function parseSeederFile(Model $model, array $config, Collection $data): void
     {
         $stubFile = __DIR__ . "/../stubs/seeder.stub";
-
+        
         $content = str(File::get($stubFile));
 
         $replaced = $content->replace("<model>", $config['model'])
             ->replace("<namespace>", $config['namespace'])
+            ->replace("<modelEvents>", $this->option('with-events') ? "" : "use WithoutModelEvents;\n")
             ->replace("<lines>", $this->stubModelLines($model, $config, $data));
 
         $path = $this->outputPath ?? $this->findOutputPath($config);
 
         File::put("$path/{$config['model']}Seeder.php", $replaced);
     }
-    
+
     /**
      * @param array $config
      * @param int $retries
@@ -150,42 +201,39 @@ class Make extends Command
     private function findOutputPath(array $config, int $retries = 0, ?string $relativePath = null): string
     {
         $path = $relativePath ?? $config['relativePath'];
-        
-        
-        if($retries > 10){
+
+        if ($retries > 10) {
             $this->error("oops, output path not found at $path");
-            exit; 
+            exit;
         }
-        
+
         $directories = File::directories("$path/..");
-        
-        foreach($directories as $directory){
-            if(str($directory)->after("$path/..")->lower()->slug()->toString() !== "database"){
+
+        foreach ($directories as $directory) {
+            if (str($directory)->after("$path/..")->lower()->slug()->toString() !== "database") {
                 continue;
             }
-            
+
             $name = str($directory)
                 ->replace(['/', '\\'], '-')
                 ->afterLast('-')
                 ->toString();
-            
-            if($name[0] === 'D'){
+
+            if ($name[0] === 'D') {
                 $seederPath = "Seeders";
-            }else{
+            } else {
                 $seederPath = "seeders";
             }
-            
-            if(!File::isDirectory("$directory/$seederPath")){
+
+            if (!File::isDirectory("$directory/$seederPath")) {
                 File::makeDirectory("$directory/$seederPath");
             }
-            
+
             return "$directory/$seederPath";
         }
-        
-        return $this->findOutputPath($config, $retries+1, "$path/../");
+
+        return $this->findOutputPath($config, $retries + 1, "$path/../");
     }
-    
-    
 
     /**
      * @param Model $model
@@ -203,10 +251,86 @@ class Make extends Command
 
         foreach ($data as $line) {
             $replaced .= str($content)->replace("<model>", $config['model'])
-                ->replace("<lines>", $this->stubModelLine($model, $config, $line));
+                ->replace("<lines>", $this->stubModelLine($model, $config, $line))
+                ->replace("<pivotRelations>", $this->stubPivotRelations($line));
         }
 
         return $replaced;
+    }
+    
+    private function stubPivotRelations(Model $model)
+    {
+        $relations = $this->getPivotRelations($model);
+        
+        $stubFile = __DIR__ . "/../stubs/pivot-relations.stub";
+        
+        $content = str(File::get($stubFile));
+                
+        $replaced = "";
+        
+        foreach($relations as $relation){
+            
+            if(!$model->$relation->count()){
+                continue;
+            }
+            
+            $connection = $model->$relation()->getConnection()->getName();
+            
+            $replaced .= str($content)->replace("<connection>", $connection)
+                ->replace("<relation>", $relation)
+                ->replace("<table>", $model->$relation()->getTable())
+                ->replace("<lines>", $this->parsePivotRelationLines($model->$relation));        
+        }
+        
+        return $replaced;
+    }
+    
+    private function parsePivotRelationLines(Collection $data)
+    {
+        $stubFile = __DIR__ . "/../stubs/pivot-relation-lines.stub";
+        
+        $content = str(File::get($stubFile));
+
+        $replaced = "";
+
+        foreach ($data as $pivot) {
+            foreach($pivot->pivot->getAttributes() as $key => $value){
+                if (in_array($key, config('model-seeder.exclude_columns', []))) {
+                    continue;
+                }
+
+                $valueType = $this->parseValueType($value);
+
+                $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $valueType);
+            }
+        }
+
+        return $replaced;
+    }
+
+    /**
+     * @param Model $model
+     * @return array
+     */
+    private function getPivotRelations(Model $model): array
+    {
+        $reflectionClass = new ReflectionClass($model);
+
+        $relations = [];
+
+        foreach ($reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            $methodName = $method->getName();
+
+            $returnType = $reflectionClass->getMethod($methodName)->getReturnType();
+
+            if (!$returnType || (string) $returnType !== BelongsToMany::class) {
+                continue;
+            }
+
+            $relations[$methodName] = $methodName;
+        }
+
+        return $relations;
     }
 
     /**
@@ -224,12 +348,15 @@ class Make extends Command
         $replaced = "";
 
         foreach ($line->getAttributes() as $key => $value) {
+            if (in_array($key, config('model-seeder.exclude_columns', []))) {
+                continue;
+            }
 
             $valueType = $this->parseValueType($value);
 
             try {
                 $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $valueType);
-            } catch (\Throwable $ex) {
+            } catch (Throwable $ex) {
                 $this->error($ex);
                 exit;
             }
@@ -271,7 +398,7 @@ class Make extends Command
         }
 
         if ($this->option('path') && $this->option('path') === 'auto') {
-            dd('yo');
+            dd('Not yet supported!');
         }
 
         foreach ($paths as $modelPath) {

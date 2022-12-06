@@ -15,6 +15,12 @@ return [
      */
     'output_path' => "database/seeders",
     
+    /**
+     * These columns will be excluded from your seeders
+     */
+    'exclude_columns' => [
+        "id", "slug"
+    ],
     
     
 ];
