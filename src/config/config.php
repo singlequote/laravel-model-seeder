@@ -19,7 +19,7 @@ return [
      * These columns will be excluded from your seeders
      */
     'exclude_columns' => [
-        "id", "slug"
+        "id"
     ],
     
     
