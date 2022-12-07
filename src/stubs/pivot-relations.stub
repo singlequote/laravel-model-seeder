@@ -1,4 +1,3 @@
-        //<relation>
-        \DB::connection("<connection>")->table("<table>")->insert([
-<lines>
+        $model<index>-><relation>()->syncWithoutDetaching([
+<lines>       
         ]);
