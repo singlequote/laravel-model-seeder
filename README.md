@@ -19,6 +19,11 @@ The seeders will be created in `database/seeders` and your models should be in `
 ```bahs
 php artisan seed:make
 ```
+### Model events
+By default laravel adds the `WithoutModelEvents` trait to your seeders. The package does this also for abious reasons. If you would like to use your model events, you can add the `--with-events` option to the command.
+```bash
+php artisan seed:make --with-events
+```
 
 ### Changing the package behaviour
 If you moved your models to another location or you renamed your Models folder to something else you can change this in the config of the package.
