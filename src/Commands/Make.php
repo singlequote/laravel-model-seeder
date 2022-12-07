@@ -385,10 +385,14 @@ class Make extends Command
         if (is_object($value) || is_array($value)) {
             $value = json_encode($value);
         }
-
+                
+        if(is_bool($value)){
+            $value = $value ? true : false;
+        }
+        
         if (is_integer($value)) {
             return $value;
-        }
+        }        
 
         if (is_null($value)) {
             return "null";
