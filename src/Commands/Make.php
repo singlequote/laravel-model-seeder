@@ -249,16 +249,22 @@ class Make extends Command
 
         $replaced = "";
 
-        foreach ($data as $line) {
+        foreach ($data as $index => $line) {
             $replaced .= str($content)->replace("<model>", $config['model'])
+                ->replace("<index>", $index)
                 ->replace("<lines>", $this->stubModelLine($model, $config, $line))
-                ->replace("<pivotRelations>", $this->stubPivotRelations($line));
+                ->replace("<pivotRelations>", $this->stubPivotRelations($line, $index));
         }
 
         return $replaced;
     }
     
-    private function stubPivotRelations(Model $model)
+    /**
+     * @param Model $model
+     * @param int $index
+     * @return string
+     */
+    private function stubPivotRelations(Model $model, int $index): string
     {
         $relations = $this->getPivotRelations($model);
         
@@ -277,6 +283,7 @@ class Make extends Command
             $connection = $model->$relation()->getConnection()->getName();
             
             $replaced .= str($content)->replace("<connection>", $connection)
+                ->replace("<index>", $index)
                 ->replace("<relation>", $relation)
                 ->replace("<table>", $model->$relation()->getTable())
                 ->replace("<lines>", $this->parsePivotRelationLines($model->$relation));        
@@ -285,7 +292,11 @@ class Make extends Command
         return $replaced;
     }
     
-    private function parsePivotRelationLines(Collection $data)
+    /**
+     * @param Collection $data
+     * @return string
+     */
+    private function parsePivotRelationLines(Collection $data): string
     {
         $stubFile = __DIR__ . "/../stubs/pivot-relation-lines.stub";
         
