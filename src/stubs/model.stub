@@ -1,4 +1,4 @@
-        <model>::insert([
+        $model<index> = <model>::insert([
 <lines>
         ]);
         
