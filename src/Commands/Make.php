@@ -1,6 +1,8 @@
 <?php
 namespace SingleQuote\ModelSeeder\Commands;
 
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use File;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
@@ -13,8 +15,6 @@ use Symfony\Component\Finder\SplFileInfo;
 use Throwable;
 use function base_path;
 use function config;
-use function ddd;
-use function GuzzleHttp\json_encode;
 use function str;
 
 class Make extends Command
@@ -444,7 +444,7 @@ class Make extends Command
      */
     private function parseValueType(mixed $value, mixed $preValue = null): mixed
     {
-        if($value instanceof \Carbon\Carbon){
+        if($value instanceof Carbon || $value instanceof CarbonImmutable){
             return "'$preValue'";
         }
                 
@@ -468,7 +468,7 @@ class Make extends Command
             return "null";
         }
                 
-        return "'$value'";
+        return "'".addslashes($value)."'";
     }
     
     private function stringableArray(array|object $items): string
