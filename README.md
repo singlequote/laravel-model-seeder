@@ -78,6 +78,18 @@ If you changed this and the package can't detect the output path you can give th
 php artisan seed:make --path=Modules/TestModule/App/Models --output=database/seeders
 ```
 
+#### Auto retrieve all models
+If you have multiple model locations and want to make seeders of them all. You can use the `--path=auto` option. This option will import all declared classes and check if they extend the `Model::class`. 
+```bash
+php artisan seed:make --path=auto
+```
+
+#### Exclude models
+By default the package will create seeders for every model in the given path. You can use the `--only=..` option to exclude other models from the process.
+```bash
+php artisan seed:make --only=User,Roles
+```
+
 
 ## Contributing
 
