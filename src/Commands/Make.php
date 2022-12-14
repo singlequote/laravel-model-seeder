@@ -262,7 +262,7 @@ class Make extends Command
     private function parseRelativePath(string $path): string
     {
         $relative = str($path)->replace(['\\', '/'], '<>')->replace('<><>', '<>')->explode('<>');
-        
+
         $namespace = "";
         $prev = [];
         $prevIndex = -1;
@@ -516,7 +516,7 @@ class Make extends Command
                 $this->models[] = $this->extractClassInfo($file);
             }
         }
-        
+
         $this->filterModels();
     }
 
@@ -525,13 +525,13 @@ class Make extends Command
      */
     private function filterModels(): void
     {
-        foreach($this->models as $index => $model){            
-            if($this->option('only') && !str($this->option('only'))->contains($model['model'])){
+        foreach ($this->models as $index => $model) {
+            if ($this->option('only') && !str($this->option('only'))->contains($model['model'])) {
                 unset($this->models[$index]);
-            }            
+            }
         }
     }
-    
+
     /**
      * @param array $paths
      * @return array
@@ -544,11 +544,11 @@ class Make extends Command
             $path = str($reflector->getFileName())->after(base_path())->trim('/\\');
 
             if (is_subclass_of($class, Model::class) && !$path->contains('vendor')) {
-                $parsed = $this->parseRelativePath($path->replace('.php', '')."/../");
+                $parsed = $this->parseRelativePath($path->replace('.php', '') . "/../");
                 $paths[$parsed] = $parsed;
             }
         }
-        
+
         return $paths;
     }
 
