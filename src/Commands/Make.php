@@ -23,7 +23,7 @@ class Make extends Command
     /**
      * @var  string
      */
-    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events}';
+    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=}';
 
     /**
      * @var  string
@@ -99,7 +99,7 @@ class Make extends Command
                 $path = $this->outputPath ?? $this->findOutputPath($model);
                 $replaced .= "            {$model['model']}Seeder::class,\n";
             }
-            
+
             $fileContent = $content->replace("<namespace>", $namespace)
                 ->replace("<lines>", $replaced);
 
@@ -123,10 +123,10 @@ class Make extends Command
 
         $basePath = $this->pathToNameSpace($baseKeys);
         $namespace = $this->pathToNameSpace($keys);
-        
+
         return str($namespace)->after("$basePath\\")->toString();
     }
-    
+
     /**
      * @param Collection2 $keys
      * @return string
@@ -147,10 +147,10 @@ class Make extends Command
 
             $namespace .= ucFirst($key) . "\\";
         }
-        
+
         return rtrim($namespace, "\\");
     }
-    
+
     /**
      * @return void
      */
@@ -197,12 +197,12 @@ class Make extends Command
     private function parseSeederFile(Model $model, array $config, Collection $data): void
     {
         $stubFile = __DIR__ . "/../stubs/seeder.stub";
-        
+
         $content = str(File::get($stubFile));
-        
-        $path = $this->outputPath ?? $this->findOutputPath($config);        
+
+        $path = $this->outputPath ?? $this->findOutputPath($config);
         $namespace = $this->parseNamespace($path);
-                
+
         $replaced = $content->replace("<model>", $config['model'])
             ->replace("<parentNamespace>", $namespace)
             ->replace("<namespace>", $config['namespace'])
@@ -248,13 +248,13 @@ class Make extends Command
             if (!File::isDirectory("$directory/$seederPath")) {
                 File::makeDirectory("$directory/$seederPath");
             }
-            
+
             return $this->parseRelativePath("$directory/$seederPath");
         }
-        
+
         return $this->findOutputPath($config, $retries + 1, "$path/../");
     }
-    
+
     /**
      * @param string $path
      * @return string
@@ -262,24 +262,24 @@ class Make extends Command
     private function parseRelativePath(string $path): string
     {
         $relative = str($path)->replace(['\\', '/'], '<>')->replace('<><>', '<>')->explode('<>');
-
+        
         $namespace = "";
         $prev = [];
         $prevIndex = -1;
-        
-        foreach($relative as $key){
-            
-            if($key === '..'){
-                $namespace = rtrim($namespace, "{$prev[$prevIndex]}/")."/";
+
+        foreach ($relative as $key) {
+
+            if ($key === '..') {
+                $namespace = str($namespace)->beforeLast("{$prev[$prevIndex]}/")->toString();
                 $prevIndex--;
                 continue;
             }
-                        
+
             $namespace .= "$key/";
             $prev[] = $key;
             $prevIndex++;
         }
-                
+
         return rtrim($namespace, "/");
     }
 
@@ -306,7 +306,7 @@ class Make extends Command
 
         return $replaced;
     }
-    
+
     /**
      * @param Model $model
      * @param int $index
@@ -315,59 +315,59 @@ class Make extends Command
     private function stubPivotRelations(Model $model, int $index): string
     {
         $relations = $this->getPivotRelations($model);
-        
+
         $stubFile = __DIR__ . "/../stubs/pivot-relations.stub";
-        
+
         $content = str(File::get($stubFile));
-                
+
         $replaced = "";
-        
-        foreach($relations as $relation){
-            
-            if(!$model->$relation->count()){
+
+        foreach ($relations as $relation) {
+
+            if (!$model->$relation->count()) {
                 continue;
             }
-            
+
             $connection = $model->$relation()->getConnection()->getName();
-            
-            foreach($model->$relation as $data){
-            
-            $replaced .= str($content)->replace("<connection>", $connection)
-                ->replace("<index>", $index)
-                ->replace("<relation>", $relation)
-                ->replace("<table>", $model->$relation()->getTable())
-                ->replace("<values>", $this->getPivotValues($data))
-                ->replace("<line>", $this->getRelatedValue($data));
+
+            foreach ($model->$relation as $data) {
+
+                $replaced .= str($content)->replace("<connection>", $connection)
+                    ->replace("<index>", $index)
+                    ->replace("<relation>", $relation)
+                    ->replace("<table>", $model->$relation()->getTable())
+                    ->replace("<values>", $this->getPivotValues($data))
+                    ->replace("<line>", $this->getRelatedValue($data));
             }
         }
-        
+
         return $replaced;
     }
-    
+
     private function getPivotValues(Model $data): string
     {
         $foreign = $data->pivot->getForeignKey();
         $related = $data->pivot->getRelatedKey();
-        
+
         $replaced = "";
-        
+
         $stubFile = __DIR__ . "/../stubs/pivot-relation-lines.stub";
         $content = str(File::get($stubFile));
-        
-        foreach($data->pivot->getAttributes() as $key => $value){
-            
-            if($foreign === $key || $related === $key){
+
+        foreach ($data->pivot->getAttributes() as $key => $value) {
+
+            if ($foreign === $key || $related === $key) {
                 continue;
             }
-            
-            $type = $this->parseValueType($value); 
-            
+
+            $type = $this->parseValueType($value);
+
             $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $type);
         }
-        
+
         return $replaced;
     }
-    
+
     /**
      * @param Model $data
      * @return mixed
@@ -375,7 +375,7 @@ class Make extends Command
     private function getRelatedValue(Model $data): mixed
     {
         $related = $data->pivot->getRelatedKey();
-        
+
         return $this->parseValueType($data->pivot->$related);
     }
 
@@ -417,12 +417,12 @@ class Make extends Command
         $content = str(File::get($stubFile));
 
         $replaced = "";
-        
+
         foreach ($line->getAttributes() as $key => $preValue) {
             if (in_array($key, config('model-seeder.exclude_columns', []))) {
                 continue;
             }
-            
+
             $value = $line->$key;
 
             $valueType = $this->parseValueType($value, $preValue);
@@ -444,49 +444,53 @@ class Make extends Command
      */
     private function parseValueType(mixed $value, mixed $preValue = null): mixed
     {
-        if($value instanceof Carbon || $value instanceof CarbonImmutable){
+        if ($value instanceof Carbon || $value instanceof CarbonImmutable) {
             return "'$preValue'";
         }
-                
+
         if (is_object($value)) {
             return $this->stringableArray($value);
         }
-        
+
         if (is_array($value)) {
             return $this->stringableArray($value);
         }
-                        
-        if(is_bool($value)){
+
+        if (is_bool($value)) {
             $value = $value ? true : false;
         }
-        
+
         if (is_integer($value)) {
             return $value;
-        }        
+        }
 
         if (is_null($value)) {
             return "null";
         }
-                
-        return "'".addslashes($value)."'";
+
+        return "'" . addslashes($value) . "'";
     }
-    
+
+    /**
+     * @param array|object $items
+     * @return string
+     */
     private function stringableArray(array|object $items): string
     {
         $string = "[";
-        
-        foreach($items as $key => $value){
-            
-            if(is_array($value) || is_object($value)){
+
+        foreach ($items as $key => $value) {
+
+            if (is_array($value) || is_object($value)) {
                 $string .= $this->stringableArray($value);
-            }else{
-                
+            } else {
+
                 $parsedValue = $this->parseValueType($value);
-                
+
                 $string .= "\"$key\" => $parsedValue, ";
-            }            
+            }
         }
-        
+
         return "$string]";
     }
 
@@ -502,7 +506,7 @@ class Make extends Command
         }
 
         if ($this->option('path') && $this->option('path') === 'auto') {
-            dd('Not yet supported!');
+            $paths = $this->extractDeclaredClasses();
         }
 
         foreach ($paths as $modelPath) {
@@ -512,6 +516,40 @@ class Make extends Command
                 $this->models[] = $this->extractClassInfo($file);
             }
         }
+        
+        $this->filterModels();
+    }
+
+    /**
+     * @return void
+     */
+    private function filterModels(): void
+    {
+        foreach($this->models as $index => $model){            
+            if($this->option('only') && !str($this->option('only'))->contains($model['model'])){
+                unset($this->models[$index]);
+            }            
+        }
+    }
+    
+    /**
+     * @param array $paths
+     * @return array
+     */
+    private function extractDeclaredClasses(array $paths = []): array
+    {
+        foreach (get_declared_classes() as $class) {
+
+            $reflector = new \ReflectionClass($class);
+            $path = str($reflector->getFileName())->after(base_path())->trim('/\\');
+
+            if (is_subclass_of($class, Model::class) && !$path->contains('vendor')) {
+                $parsed = $this->parseRelativePath($path->replace('.php', '')."/../");
+                $paths[$parsed] = $parsed;
+            }
+        }
+        
+        return $paths;
     }
 
     /**
