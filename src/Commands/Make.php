@@ -36,6 +36,11 @@ class Make extends Command
     protected array $models = [];
 
     /**
+     * @var array
+     */
+    protected array $relations = [];
+
+    /**
      * @var string|null
      */
     protected ?string $outputPath;
@@ -324,14 +329,13 @@ class Make extends Command
 
         foreach ($relations as $relation) {
 
-            if (!$model->$relation->count()) {
+            if (isset($this->relations[$model->$relation()->getTable()]) || !$model->$relation->count()) {
                 continue;
             }
 
             $connection = $model->$relation()->getConnection()->getName();
 
             foreach ($model->$relation as $data) {
-
                 $replaced .= str($content)->replace("<connection>", $connection)
                     ->replace("<index>", $index)
                     ->replace("<relation>", $relation)
@@ -339,11 +343,17 @@ class Make extends Command
                     ->replace("<values>", $this->getPivotValues($data))
                     ->replace("<line>", $this->getRelatedValue($data));
             }
+            
+            $this->relations[$model->$relation()->getTable()] = true;
         }
 
         return $replaced;
     }
-
+    
+    /**
+     * @param Model $data
+     * @return string
+     */
     private function getPivotValues(Model $data): string
     {
         $foreign = $data->pivot->getForeignKey();
