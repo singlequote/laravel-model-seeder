@@ -1,8 +1,6 @@
-        // <model> region
 
         $model<index> = <model>::create([
 <lines>
         ]);
 
 <pivotRelations>
-        // end <model> region
