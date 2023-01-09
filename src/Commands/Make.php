@@ -334,7 +334,7 @@ class Make extends Command
             }
 
             $connection = $model->$relation()->getConnection()->getName();
-
+            
             foreach ($model->$relation as $data) {
                 $replaced .= str($content)->replace("<connection>", $connection)
                     ->replace("<index>", $index)
@@ -501,7 +501,7 @@ class Make extends Command
             }
         }
 
-        return "$string]";
+        return "$string],";
     }
 
     /**
