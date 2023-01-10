@@ -38,6 +38,11 @@ class Make extends Command
     /**
      * @var array
      */
+    protected array $config = [];
+
+    /**
+     * @var array
+     */
     protected array $relations = [];
 
     /**
@@ -201,6 +206,8 @@ class Make extends Command
      */
     private function parseSeederFile(Model $model, array $config, Collection $data): void
     {
+        $this->config = $config;
+        
         $stubFile = __DIR__ . "/../stubs/seeder.stub";
 
         $content = str(File::get($stubFile));
@@ -301,49 +308,80 @@ class Make extends Command
         $content = str(File::get($stubFile));
 
         $replaced = "";
-
+        
         foreach ($data as $index => $line) {
             $replaced .= str($content)->replace("<model>", $config['model'])
                 ->replace("<index>", $index)
-                ->replace("<lines>", $this->stubModelLine($model, $config, $line))
-                ->replace("<pivotRelations>", $this->stubPivotRelations($line, $index));
+                ->replace("<lines>", $this->stubModelLine($model, $config, $line));
         }
-
+        
+        $relations = $this->getPivotRelations($model);
+        
+        
+        foreach($relations as $relation){
+            
+            if($this->confirm("Create pivot seeder for ".$model::class."->$relation()?")){
+                $this->createPivotSeeder($model, $data, $relation);
+            }
+            
+        }
+        
         return $replaced;
     }
+    
+    /**
+     * @param Model $model
+     * @param Collection $data
+     * @param string $relation
+     * @return void
+     */
+    private function createPivotSeeder(Model $model, Collection $data, string $relation): void
+    {
+        $stubFile = __DIR__ . "/../stubs/seeder.stub";
+        
+        $content = str(File::get($stubFile));
+
+        $path = $this->outputPath ?? $this->findOutputPath($this->config);
+        $namespace = $this->parseNamespace($path);
+        $fileName = str($model->$relation()->getTable())->append("_pivot")->studly();
+                
+        $replaced = $content->replace("<namespace>\<model>", "Illuminate\Support\Facades\DB")
+            ->replace("<model>", $fileName)
+            ->replace("<parentNamespace>", $namespace)
+            ->replace("<namespace>", $this->config['namespace'])
+            ->replace("<modelEvents>", $this->option('with-events') ? "" : "use WithoutModelEvents;\n")
+            ->replace("<lines>", $this->stubPivotRelations($model, $data, $relation));
+                
+        File::put("$path/{$fileName}Seeder.php", $replaced);
+    }
+    
 
     /**
      * @param Model $model
      * @param int $index
      * @return string
      */
-    private function stubPivotRelations(Model $model, int $index): string
+    private function stubPivotRelations(Model $model, Collection $items, string $relation): string
     {
-        $relations = $this->getPivotRelations($model);
-
         $stubFile = __DIR__ . "/../stubs/pivot-relations.stub";
 
         $content = str(File::get($stubFile));
 
         $replaced = "";
-
-        foreach ($relations as $relation) {
-
-            if (isset($this->relations[$model->$relation()->getTable()]) || !$model->$relation->count()) {
+        
+        $connection = $model->$relation()->getConnection()->getName();
+        
+        foreach ($items as $item) {            
+            if (!$item->$relation->count()) {
                 continue;
             }
 
-            $connection = $model->$relation()->getConnection()->getName();
-            
-            foreach ($model->$relation as $data) {
+            foreach ($item->$relation as $data) {
                 $replaced .= str($content)->replace("<connection>", $connection)
-                    ->replace("<index>", $index)
-                    ->replace("<relation>", $relation)
                     ->replace("<table>", $model->$relation()->getTable())
-                    ->replace("<values>", $this->getPivotValues($data))
-                    ->replace("<line>", $this->getRelatedValue($data));
+                    ->replace("<lines>", $this->getPivotValues($data));
             }
-            
+                        
             $this->relations[$model->$relation()->getTable()] = true;
         }
 
@@ -356,37 +394,17 @@ class Make extends Command
      */
     private function getPivotValues(Model $data): string
     {
-        $foreign = $data->pivot->getForeignKey();
-        $related = $data->pivot->getRelatedKey();
-
         $replaced = "";
 
         $stubFile = __DIR__ . "/../stubs/pivot-relation-lines.stub";
         $content = str(File::get($stubFile));
 
         foreach ($data->pivot->getAttributes() as $key => $value) {
-
-            if ($foreign === $key || $related === $key) {
-                continue;
-            }
-
             $type = $this->parseValueType($value);
-
-            $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $type);
+            $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $type)->replace(',,', ',');
         }
 
         return $replaced;
-    }
-
-    /**
-     * @param Model $data
-     * @return mixed
-     */
-    private function getRelatedValue(Model $data): mixed
-    {
-        $related = $data->pivot->getRelatedKey();
-
-        return $this->parseValueType($data->pivot->$related);
     }
 
     /**
@@ -438,7 +456,7 @@ class Make extends Command
             $valueType = $this->parseValueType($value, $preValue);
 
             try {
-                $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $valueType);
+                $replaced .= str($content)->replace("<key>", $key)->replace("<value>", $valueType)->replace(',,', ',');
             } catch (Throwable $ex) {
                 $this->error($ex);
                 exit;
@@ -453,7 +471,7 @@ class Make extends Command
      * @return mixed
      */
     private function parseValueType(mixed $value, mixed $preValue = null): mixed
-    {
+    {        
         if ($value instanceof Carbon || $value instanceof CarbonImmutable) {
             return "'$preValue'";
         }
@@ -467,7 +485,7 @@ class Make extends Command
         }
 
         if (is_bool($value)) {
-            $value = $value ? true : false;
+            return $value ? 'true' : 'false';
         }
 
         if (is_integer($value)) {

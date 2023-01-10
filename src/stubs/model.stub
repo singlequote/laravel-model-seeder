@@ -1,6 +1,4 @@
 
-        $model<index> = <model>::create([
+        <model>::create([
 <lines>
         ]);
-
-<pivotRelations>

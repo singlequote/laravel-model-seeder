@@ -9,7 +9,7 @@ Create seeders from your model using the data in your database
 
 ### Installation
 ```console
-composer require singlequote/laravel-model-seeder
+composer require singlequote/laravel-model-seeder --dev
 ```
 
 ### Usage
