@@ -90,6 +90,12 @@ By default the package will create seeders for every model in the given path. Yo
 php artisan seed:make --only=User,Roles
 ```
 
+#### Order seed data on column
+By default the package will generate the data ordering by the `id` column. you can change this using the `orderBy` option.
+```bash
+php artisan seed:make --orderBy=created_at
+```
+
 
 ## Contributing
 
