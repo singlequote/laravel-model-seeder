@@ -23,7 +23,7 @@ class Make extends Command
     /**
      * @var  string
      */
-    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=}';
+    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=} {--orderBy=id}';
 
     /**
      * @var  string
@@ -188,7 +188,7 @@ class Make extends Command
     private function extractModelData(array $config, Model $model): void
     {
         try {
-            $data = $model::withoutGlobalScopes()->get();
+            $data = $model::withoutGlobalScopes()->orderBy($this->option('orderBy'))->get();
         } catch (Throwable $ex) {
             $this->error("Failed to parse {$config['model']}");
             dd($ex);
