@@ -95,7 +95,10 @@ By default the package will generate the data ordering by the `id` column. you c
 ```bash
 php artisan seed:make --orderBy=created_at
 ```
-
+Or order by desc
+```bash
+php artisan seed:make --orderByDesc=created_at
+```
 
 ## Contributing
 
