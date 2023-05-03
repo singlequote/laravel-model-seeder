@@ -23,7 +23,7 @@ class Make extends Command
     /**
      * @var  string
      */
-    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=} {--orderBy=} {--orderByDesc=}';
+    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=}';
 
     /**
      * @var  string
@@ -188,20 +188,10 @@ class Make extends Command
     private function extractModelData(array $config, Model $model): void
     {
         try {
-            $query = $model::withoutGlobalScopes();
-            
-            if($this->option('orderBy')){
-                $query->orderBy($this->option('orderBy'));
-            }
-            if($this->option('orderByDesc')){
-                $query->orderByDesc($this->option('orderByDesc'));
-            }
-            
-            $data = $query->get();
-            
+            $data = $model::withoutGlobalScopes()->get();
         } catch (Throwable $ex) {
             $this->error("Failed to parse {$config['model']}");
-            $this->error($ex->getMessage());
+            dd($ex);
             return;
         }
 
@@ -520,15 +510,15 @@ class Make extends Command
         foreach ($items as $key => $value) {
 
             if (is_array($value) || is_object($value)) {
-                $string .= $this->stringableArray($value);
+                $string .= "\"$key\" => ".$this->stringableArray($value);
             } else {
 
                 $parsedValue = $this->parseValueType($value);
 
-                $string .= "\"$key\" => $parsedValue, ";
+                $string .= "\"$key\" => $parsedValue,";
             }
         }
-
+        
         return "$string],";
     }
 
