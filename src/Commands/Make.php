@@ -5,6 +5,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use File;
 use Illuminate\Console\Command;
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,7 +14,9 @@ use ReflectionClass;
 use ReflectionMethod;
 use Symfony\Component\Finder\SplFileInfo;
 use Throwable;
+use function app_path;
 use function base_path;
+use function collect;
 use function config;
 use function str;
 
@@ -539,7 +542,8 @@ class Make extends Command
         }
 
         if ($this->option('path') && $this->option('path') === 'auto') {
-            $paths = $this->extractDeclaredClasses();
+            $this->extractDeclaredClasses();
+            return;
         }
 
         foreach ($paths as $modelPath) {
@@ -566,23 +570,48 @@ class Make extends Command
     }
 
     /**
-     * @param array $paths
-     * @return array
+     * @return void
      */
-    private function extractDeclaredClasses(array $paths = []): array
+    private function extractDeclaredClasses(): void
     {
-        foreach (get_declared_classes() as $class) {
+        $models = $this->getModels();
 
-            $reflector = new \ReflectionClass($class);
-            $path = str($reflector->getFileName())->after(base_path())->trim('/\\');
-
-            if (is_subclass_of($class, Model::class) && !$path->contains('vendor')) {
-                $parsed = $this->parseRelativePath($path->replace('.php', '') . "/../");
-                $paths[$parsed] = $parsed;
-            }
+        foreach ($models as $model) {
+            $this->models[] = [
+                'basePath' => base_path("$model.php"),
+                'relativePath' => base_path(str($model)->beforeLast('\\')->value),
+                'namespace' => str($model)->beforeLast('\\')->value,
+                'model' => str($model)->afterLast('\\')->value,
+            ];
         }
 
-        return $paths;
+        $this->filterModels();
+    }
+
+    private function getModels(): Collection2
+    {
+        $models = collect(File::allFiles(app_path()))
+            ->map(function ($item) {
+                $path = $item->getRelativePathName();
+                $class = sprintf('\%s%s',
+                    Container::getInstance()->getNamespace(),
+                    strtr(substr($path, 0, strrpos($path, '.')), '/', '\\'));
+
+                return $class;
+            })
+            ->filter(function ($class) {
+            $valid = false;
+
+            if (class_exists($class)) {
+                $reflection = new \ReflectionClass($class);
+                $valid = $reflection->isSubclassOf(Model::class) &&
+                    !$reflection->isAbstract();
+            }
+
+            return $valid;
+        });
+
+        return $models->values();
     }
 
     /**
