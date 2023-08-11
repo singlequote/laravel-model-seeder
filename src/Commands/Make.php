@@ -23,7 +23,7 @@ class Make extends Command
     /**
      * @var  string
      */
-    protected $signature = 'seed:make {--path=} {--output=auto} {--with-events} {--only=} {--orderBy=} {--orderByDesc=}';
+    protected $signature = 'seed:make {--path=auto} {--output=auto} {--with-events} {--only=} {--orderBy=} {--orderByDesc=}';
 
     /**
      * @var  string
@@ -167,14 +167,13 @@ class Make extends Command
     private function createModelSeeders(): void
     {
         foreach ($this->models as $model) {
-
-            $className = $model['namespace'] . "\\" . $model['model'];
-
             try {
+                $className = $model['namespace'] . "\\" . $model['model'];
                 $this->extractModelData($model, new $className);
             } catch (Throwable $ex) {
+
                 $this->info($ex);
-                $this->error("$className is name a valid model");
+                $this->error("{$model['basePath']} invalid model");
                 exit;
             }
         }
@@ -187,18 +186,17 @@ class Make extends Command
      */
     private function extractModelData(array $config, Model $model): void
     {
-       try {
+        try {
             $query = $model::withoutGlobalScopes();
 
-            if($this->option('orderBy')){
+            if ($this->option('orderBy')) {
                 $query->orderBy($this->option('orderBy'));
             }
-            if($this->option('orderByDesc')){
+            if ($this->option('orderByDesc')) {
                 $query->orderByDesc($this->option('orderByDesc'));
             }
 
             $data = $query->get();
-
         } catch (Throwable $ex) {
             $this->error("Failed to parse {$config['model']}");
             $this->error($ex->getMessage());
@@ -217,7 +215,7 @@ class Make extends Command
     private function parseSeederFile(Model $model, array $config, Collection $data): void
     {
         $this->config = $config;
-        
+
         $stubFile = __DIR__ . "/../stubs/seeder.stub";
 
         $content = str(File::get($stubFile));
@@ -318,27 +316,25 @@ class Make extends Command
         $content = str(File::get($stubFile));
 
         $replaced = "";
-        
+
         foreach ($data as $index => $line) {
             $replaced .= str($content)->replace("<model>", $config['model'])
                 ->replace("<index>", $index)
                 ->replace("<lines>", $this->stubModelLine($model, $config, $line));
         }
-        
+
         $relations = $this->getPivotRelations($model);
-        
-        
-        foreach($relations as $relation){
-            
-            if($this->confirm("Create pivot seeder for ".$model::class."->$relation()?")){
+
+        foreach ($relations as $relation) {
+
+            if ($this->confirm("Create pivot seeder for " . $model::class . "->$relation()?")) {
                 $this->createPivotSeeder($model, $data, $relation);
             }
-            
         }
-        
+
         return $replaced;
     }
-    
+
     /**
      * @param Model $model
      * @param Collection $data
@@ -348,23 +344,22 @@ class Make extends Command
     private function createPivotSeeder(Model $model, Collection $data, string $relation): void
     {
         $stubFile = __DIR__ . "/../stubs/seeder.stub";
-        
+
         $content = str(File::get($stubFile));
 
         $path = $this->outputPath ?? $this->findOutputPath($this->config);
         $namespace = $this->parseNamespace($path);
         $fileName = str($model->$relation()->getTable())->append("_pivot")->studly();
-                
+
         $replaced = $content->replace("<namespace>\<model>", "Illuminate\Support\Facades\DB")
             ->replace("<model>", $fileName)
             ->replace("<parentNamespace>", $namespace)
             ->replace("<namespace>", $this->config['namespace'])
             ->replace("<modelEvents>", $this->option('with-events') ? "" : "use WithoutModelEvents;\n")
             ->replace("<lines>", $this->stubPivotRelations($model, $data, $relation));
-                
+
         File::put("$path/{$fileName}Seeder.php", $replaced);
     }
-    
 
     /**
      * @param Model $model
@@ -378,10 +373,10 @@ class Make extends Command
         $content = str(File::get($stubFile));
 
         $replaced = "";
-        
+
         $connection = $model->$relation()->getConnection()->getName();
-        
-        foreach ($items as $item) {            
+
+        foreach ($items as $item) {
             if (!$item->$relation->count()) {
                 continue;
             }
@@ -391,13 +386,13 @@ class Make extends Command
                     ->replace("<table>", $model->$relation()->getTable())
                     ->replace("<lines>", $this->getPivotValues($data));
             }
-                        
+
             $this->relations[$model->$relation()->getTable()] = true;
         }
 
         return $replaced;
     }
-    
+
     /**
      * @param Model $data
      * @return string
@@ -481,7 +476,7 @@ class Make extends Command
      * @return mixed
      */
     private function parseValueType(mixed $value, mixed $preValue = null): mixed
-    {        
+    {
         if ($value instanceof Carbon || $value instanceof CarbonImmutable) {
             return "'$preValue'";
         }
@@ -520,7 +515,7 @@ class Make extends Command
         foreach ($items as $key => $value) {
 
             if (is_array($value) || is_object($value)) {
-                $string .= "\"$key\" => ".$this->stringableArray($value);
+                $string .= "\"$key\" => " . $this->stringableArray($value);
             } else {
 
                 $parsedValue = $this->parseValueType($value);
@@ -528,7 +523,7 @@ class Make extends Command
                 $string .= "\"$key\" => $parsedValue,";
             }
         }
-        
+
         return "$string],";
     }
 
