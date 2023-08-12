@@ -84,7 +84,9 @@ class Make extends Command
 
         $this->createModelSeeders();
 
-        $this->createDatabaseSeeders();
+        if ($this->confirm('Would you like to update the DatabaseSeeder.php file?')) {
+            $this->createDatabaseSeeders();
+        }
 
         $this->info("Database seeders created!");
     }
